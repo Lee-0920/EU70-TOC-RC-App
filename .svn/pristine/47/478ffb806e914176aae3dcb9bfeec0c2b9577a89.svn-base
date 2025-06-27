@@ -1,0 +1,53 @@
+/*
+ * DS3904Driver.h
+ *
+ *  Created on: 2018年11月19日
+ *      Author: Administrator
+ */
+
+#ifndef SRC_DRIVER_OPTICALDRIVER_DS3904DRIVER_H_
+#define SRC_DRIVER_OPTICALDRIVER_DS3904DRIVER_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include "stm32f4xx.h"
+#include "Driver/System.h"
+
+#define DS3904_MAX_VALUE    0x7F
+#define DS3904_MIN_VALUE    0x0
+#define DS3904_ADDR   		0x50 //(A0为低)
+
+#define DS3904_MAX_CONTROLLER   4
+#define DS3904_LED_REF     0
+#define DS3904_LED_MEA     1
+#define DS3904_LED_METER1      2
+#define DS3904_LED_METER2      3
+
+typedef struct
+{
+    GPIO_TypeDef *portSCL;
+    Uint16 pinSCL;
+    uint32_t rccSCL;
+    GPIO_TypeDef *portSDA;
+    Uint16 pinSDA;
+    uint32_t rccSDA;
+} DS3904Driver;
+
+/**
+ * @brief DS3904驱动
+ * @details 使用I2C方式实现数字电位器DS3904读写控制
+ */
+void DS3904_Init(DS3904Driver* DS3904);
+
+Uint16 DS3904_ReadRDAC(DS3904Driver* DS3904, Uint8 addr);
+Bool DS3904_WriteRDAC(DS3904Driver* DS3904, Uint8 addr, Uint16 value);
+Bool DS3904_Reset(DS3904Driver* DS3904);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* SRC_DRIVER_OPTICALDRIVER_DS3904DRIVER_H_ */

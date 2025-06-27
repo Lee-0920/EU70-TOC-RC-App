@@ -1,0 +1,20 @@
+/*
+ * ChannelDriver.h
+ *
+ *  Created on: 2024年3月8日
+ *      Author: Lee
+ */
+#include "stm32f4xx.h"
+#include "Common/Types.h"
+
+#ifndef SRC_DRIVER_CHANNELDRIVER_H_
+#define SRC_DRIVER_CHANNELDRIVER_H_
+
+void ChannelDriver_Init(void);
+void ChannelDriver_SetOutput(uint8_t index, float level);
+Bool ChannelDriver_IsOpen(Uint8 index);
+void ChannelDriver_ReSetZero(void);
+void ChannelDriver_Ref(void);
+void ChannelDriver_SetGain(uint8_t gain);
+
+#endif /* SRC_DRIVER_TEMPDRIVER_BOXFANDRIVER_H_ */

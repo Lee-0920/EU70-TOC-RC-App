@@ -1,0 +1,167 @@
+/*
+ * ThermostatDeviceMap.c
+ *
+ *  Created on: 2019年8月16日
+ *      Author: Administrator
+ */
+
+/*
+ * ThermostatDeviceMap.c
+ *
+ *  Created on: 2017年11月16日
+ *      Author: LIANG
+ */
+
+#include "ThermostatDeviceMap.h"
+#include "Driver/System.h"
+#include <string.h>
+#include "Tracer/Trace.h"
+
+//加热丝输出
+static Bool ThermostatDeviceMap_SetOutputWay1(ThermostatDeviceDriver *deviceDriver, float level);
+
+//风扇输出
+static Bool ThermostatDeviceMap_SetOutputWay2(ThermostatDeviceDriver *deviceDriver, float level);
+
+//电炉输出
+static Bool ThermostatDeviceMap_SetOutputWay3(ThermostatDeviceDriver *deviceDriver, float level);
+
+void ThermostatDeviceMap_Init(ThermostatDevice* device)
+{
+	//电炉加热 //TEMP_CTRL
+	device[0].maxDutyCycle = 1;
+	device[0].setOutputWayFunc = ThermostatDeviceMap_SetOutputWay1;
+	device[0].deviceDriver.isExtra = FALSE;
+	device[0].deviceDriver.mode = THERMOSTATDEVICEDRIVER_VIRTUAL_PWM;
+	device[0].deviceDriver.port = GPIOD;
+	device[0].deviceDriver.pin = GPIO_Pin_10;
+	device[0].deviceDriver.gpioRcc = RCC_AHB1Periph_GPIOD;
+	device[0].deviceDriver.modeConfig.IOConfig.open = Bit_SET;
+	device[0].deviceDriver.modeConfig.IOConfig.close = Bit_RESET;
+	ThermostatDevice_Init(&device[0]);
+
+//	//制冷片
+//	device[0].maxDutyCycle = 1;
+//	device[0].setOutputWayFunc = ThermostatDeviceMap_SetOutputWay1;
+//	device[0].deviceDriver.mode = THERMOSTATDEVICEDRIVER_PWM;
+//	device[0].deviceDriver.port = GPIOB;
+//	device[0].deviceDriver.pin = GPIO_Pin_8;
+//	device[0].deviceDriver.modeConfig.PWMConfig.pinSource = GPIO_PinSource8;
+//	device[0].deviceDriver.modeConfig.PWMConfig.goipAF = GPIO_AF_TIM4;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerRccInitFunction = RCC_APB1PeriphClockCmd;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerRcc = RCC_APB1Periph_TIM4;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerPrescaler = 44;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerPeriod = 49999;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerChannel = 3;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timer = TIM4;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerOCPolarity = TIM_OCPolarity_Low;
+//	device[0].deviceDriver.modeConfig.PWMConfig.timerOCMode = TIM_OCMode_PWM2;//在向上计数模式下，TIMx_CNT < TIMx_CCR1时，通道1为无效电平
+//	ThermostatDevice_Init(&device[0]);
+
+//    //长测量池
+//    device[2].maxDutyCycle = 0.7;
+//    device[2].setOutputWayFunc = ThermostatDeviceMap_SetOutputWay1;
+//    device[2].deviceDriver.isExtra = FALSE;
+//    device[2].deviceDriver.mode = THERMOSTATDEVICEDRIVER_VIRTUAL_PWM;
+//    device[2].deviceDriver.port = GPIOE;
+//	device[2].deviceDriver.pin = GPIO_Pin_12;
+//	device[2].deviceDriver.gpioRcc = RCC_AHB1Periph_GPIOE;
+//	device[2].deviceDriver.modeConfig.IOConfig.open = Bit_SET;
+//	device[2].deviceDriver.modeConfig.IOConfig.close = Bit_RESET;
+//    ThermostatDevice_Init(&device[2]);
+//
+//    //短测量池
+//	device[3].maxDutyCycle = 1;
+//	device[3].setOutputWayFunc = ThermostatDeviceMap_SetOutputWay1;
+//	device[3].deviceDriver.mode = THERMOSTATDEVICEDRIVER_PWM;
+//	device[3].deviceDriver.port = GPIOE;
+//	device[3].deviceDriver.pin = GPIO_Pin_13;
+//	device[3].deviceDriver.modeConfig.PWMConfig.pinSource = GPIO_PinSource13;
+//	device[3].deviceDriver.modeConfig.PWMConfig.goipAF = GPIO_AF_TIM1;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerRccInitFunction = RCC_APB2PeriphClockCmd;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerRcc = RCC_APB2Periph_TIM1;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerPrescaler = 44;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerPeriod = 49999;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerChannel = 3;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timer = TIM1;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerOCPolarity = TIM_OCPolarity_Low;
+//	device[3].deviceDriver.modeConfig.PWMConfig.timerOCMode = TIM_OCMode_PWM2;//在向上计数模式下，TIMx_CNT < TIMx_CCR1时，通道1为无效电平
+//	ThermostatDevice_Init(&device[3]);
+//
+//	//电炉总电源控制
+//    GPIO_InitTypeDef GPIO_InitStructure;
+//    //时钟配置
+//    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOE, ENABLE);
+//    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+//    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_OUT;
+//    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+//    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+//    GPIO_InitStructure.GPIO_Pin = HEATER2_POWER_PIN;
+//    GPIO_Init(HEATER2_POWER_PORT, &GPIO_InitStructure);
+//    HEATER2_POWER_ON();
+////    HEATER2_POWER_OFF();
+    TRACE_INFO("\n thermdevice init over.");
+}
+
+static Bool ThermostatDeviceMap_SetOutputWay1(ThermostatDeviceDriver *deviceDriver, float level)
+{
+    TRACE_CODE("\n Output way 1");
+    return ThermostatDeviceDriver_SetOutput(deviceDriver, level);
+}
+
+static Bool ThermostatDeviceMap_SetOutputWay2(ThermostatDeviceDriver *deviceDriver, float level)
+{
+    TRACE_CODE("\n Output way 2");
+    if (0 != level)
+    {
+    	TRACE_INFO("\n Output way 2");
+        level = 0.5 * level + 0.5;
+        if (level < 0.75)
+        {
+            ThermostatDeviceDriver_SetOutput(deviceDriver, 1);
+            System_Delay(200);
+        }
+    }
+    return ThermostatDeviceDriver_SetOutput(deviceDriver, level);
+}
+
+static Bool ThermostatDeviceMap_SetOutputWay3(ThermostatDeviceDriver *deviceDriver, float level)
+{
+    TRACE_CODE("\n Output way 3");
+    if (0 != level)
+    {
+        if (level < 0.05)
+        {
+        	level = 0.05;
+        }
+        else if(level > 0.7)
+        {
+			level = 0.7;
+        }
+    }
+    return ThermostatDeviceDriver_SetOutput(deviceDriver, level);
+}
+
+char* ThermostatDeviceMap_GetName(Uint8 index)
+{
+    static char name[35] = "";
+    switch(index)
+    {
+    case MEASUREMODULE_L_MEASURE:
+        strcpy(name, "MeasureModuleLongMea");
+        break;
+    case MEASUREMODULE_S_MEASURE:
+		strcpy(name, "MeasureModuleShortMea");
+		break;
+    case MEASUREMODULE_STOVE:
+		strcpy(name, "MeasureModuleStove");
+		break;
+    case MEASUREMODULE_COOLER:
+		strcpy(name, "MeasureModuleCooler");
+		break;
+    default:
+        strcpy(name, "NULL");
+        break;
+    }
+    return name;
+}

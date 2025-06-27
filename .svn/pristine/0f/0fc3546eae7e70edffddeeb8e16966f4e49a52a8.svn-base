@@ -1,0 +1,802 @@
+
+/*
+ * ChannelDriver.c
+ *
+ *  Created on: 2016年11月09日
+ *      Author: Liang
+ */
+#include <UltraSignalDriver/ChannelDriver.h>
+#include "Tracer/Trace.h"
+#include "Driver/System.h"
+#include "SystemConfig.h"
+
+#define ADG708_EN_PIN                         GPIO_Pin_3
+#define ADG708_EN_PORT                        GPIOA
+#define ADG708_EN_RCC                  		  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE)
+#define ADG708_EN_HIGH()					  GPIO_SetBits(ADG708_EN_PORT, ADG708_EN_PIN);
+#define ADG708_EN_LOW()						  GPIO_ResetBits(ADG708_EN_PORT, ADG708_EN_PIN);
+
+#define ADG708_A0_PIN                         GPIO_Pin_1
+#define ADG708_A0_PORT                        GPIOD
+#define ADG708_A0_RCC                	      RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define ADG708_A0_HIGH()					  GPIO_SetBits(ADG708_A0_PORT, ADG708_A0_PIN);
+#define ADG708_A0_LOW()					      GPIO_ResetBits(ADG708_A0_PORT, ADG708_A0_PIN);
+
+#define ADG708_A1_PIN                         GPIO_Pin_2
+#define ADG708_A1_PORT                     	  GPIOD
+#define ADG708_A1_RCC              	          RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define ADG708_A1_HIGH()					  GPIO_SetBits(ADG708_A1_PORT, ADG708_A1_PIN);
+#define ADG708_A1_LOW()				 		  GPIO_ResetBits(ADG708_A1_PORT, ADG708_A1_PIN);
+
+#define ADG708_A2_PIN                         GPIO_Pin_3
+#define ADG708_A2_PORT                     	  GPIOD
+#define ADG708_A2_RCC              	          RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define ADG708_A2_HIGH()					  GPIO_SetBits(ADG708_A2_PORT, ADG708_A2_PIN);
+#define ADG708_A2_LOW()				 		  GPIO_ResetBits(ADG708_A2_PORT, ADG708_A2_PIN);
+
+#define GAIN1_PIN                             GPIO_Pin_6
+#define GAIN1_PORT                     	      GPIOD
+#define GAIN1_RCC              	              RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define GAIN1_HIGH()					      GPIO_SetBits(GAIN1_PORT, GAIN1_PIN);
+#define GAIN1_LOW()				 		      GPIO_ResetBits(GAIN1_PORT, GAIN1_PIN);
+
+#define GAIN2_PIN                             GPIO_Pin_7
+#define GAIN2_PORT                     	      GPIOD
+#define GAIN2_RCC              	              RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define GAIN2_HIGH()					      GPIO_SetBits(GAIN2_PORT, GAIN2_PIN);
+#define GAIN2_LOW()				 		      GPIO_ResetBits(GAIN2_PORT, GAIN2_PIN);
+
+#define GAIN3_PIN                             GPIO_Pin_11
+#define GAIN3_PORT                     	      GPIOC
+#define GAIN3_RCC              	              RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE)
+#define GAIN3_HIGH()					      GPIO_SetBits(GAIN3_PORT, GAIN3_PIN);
+#define GAIN3_LOW()				 		      GPIO_ResetBits(GAIN3_PORT, GAIN3_PIN);
+
+#define GAIN4_PIN                             GPIO_Pin_12
+#define GAIN4_PORT                     	      GPIOC
+#define GAIN4_RCC              	              RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE)
+#define GAIN4_HIGH()					      GPIO_SetBits(GAIN4_PORT, GAIN4_PIN);
+#define GAIN4_LOW()				 		      GPIO_ResetBits(GAIN4_PORT, GAIN4_PIN);
+
+#define MEA_CALIBRATION_PIN                   GPIO_Pin_15
+#define MEA_CALIBRATION_PORT                  GPIOD
+#define MEA_CALIBRATION_RCC              	  RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD, ENABLE)
+#define MEA_CALIBRATION_HIGH()				  GPIO_SetBits(MEA_CALIBRATION_PORT, MEA_CALIBRATION_PIN);
+#define MEA_CALIBRATION_LOW()				  GPIO_ResetBits(MEA_CALIBRATION_PORT, MEA_CALIBRATION_PIN);
+
+
+//**** 方波引脚 *****//
+#define FIRST_2KHZ_PIN                             GPIO_Pin_12
+#define FIRST_2KHZ_PORT                     	   GPIOC
+#define FIRST_2KHZ_RCC              	           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE)
+#define FIRST_2KHZ_HIGH()					       GPIO_SetBits(FIRST_2KHZ_PORT, FIRST_2KHZ_PIN);
+#define FIRST_2KHZ_LOW()				 		   GPIO_ResetBits(FIRST_2KHZ_PORT, FIRST_2KHZ_PIN);
+
+#define SECOND_1_2KHZ_PIN                          GPIO_Pin_5
+#define SECOND_1_2KHZ_PORT                     	   GPIOB
+#define SECOND_1_2KHZ_RCC              	           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE)
+#define SECOND_1_2KHZ_HIGH()					   GPIO_SetBits(SECOND_1_2KHZ_PORT, SECOND_1_2KHZ_PIN);
+#define SECOND_1_2KHZ_LOW()				 		   GPIO_ResetBits(SECOND_1_2KHZ_PORT, SECOND_1_2KHZ_PIN);
+
+#define SECOND_2_2KHZ_PIN                          GPIO_Pin_6
+#define SECOND_2_2KHZ_PORT                     	   GPIOB
+#define SECOND_2_2KHZ_RCC              	           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB, ENABLE)
+#define SECOND_2_2KHZ_HIGH()					   GPIO_SetBits(SECOND_2_2KHZ_PORT, SECOND_2_2KHZ_PIN);
+#define SECOND_2_2KHZ_LOW()				 		   GPIO_ResetBits(SECOND_2_2KHZ_PORT, SECOND_2_2KHZ_PIN);
+
+#define THIRD_1_4KHZ_PIN                           GPIO_Pin_10
+#define THIRD_1_4KHZ_PORT                     	   GPIOC
+#define THIRD_1_4KHZ_RCC              	           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE)
+#define THIRD_1_4KHZ_HIGH()					       GPIO_SetBits(THIRD_1_4KHZ_PORT, THIRD_1_4KHZ_PIN);
+#define THIRD_1_4KHZ_LOW()				 		   GPIO_ResetBits(THIRD_1_4KHZ_PORT, THIRD_1_4KHZ_PIN);
+
+#define THIRD_2_4KHZ_PIN                           GPIO_Pin_11
+#define THIRD_2_4KHZ_PORT                     	   GPIOC
+#define THIRD_2_4KHZ_RCC              	           RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOC, ENABLE)
+#define THIRD_2_4KHZ_HIGH()					       GPIO_SetBits(THIRD_2_4KHZ_PORT, THIRD_2_4KHZ_PIN);
+#define THIRD_2_4KHZ_LOW()				 		   GPIO_ResetBits(THIRD_2_4KHZ_PORT, THIRD_2_4KHZ_PIN);
+
+#define TIMER_FIRST_2KHZ_RCC                     	  RCC_APB2Periph_TIM10
+#define TIMER_FIRST_2KHZ_RCC_CONFIG                   RCC_APB2PeriphClockCmd(TIMER_FIRST_2KHZ_RCC, ENABLE)
+#define TIMER_FIRST_2KHZ_IRQn                   	  TIM1_UP_TIM10_IRQn
+#define TIMER_FIRST_2KHZ_IRQHANDLER                   TIM1_UP_TIM10_IRQHandler
+#define TIMER_FIRST_2KHZ                         	  TIM10
+
+#define TIMER_SECOND_2KHZ_RCC                    	  RCC_APB2Periph_TIM11
+#define TIMER_SECOND_2KHZ_RCC_CONFIG                  RCC_APB2PeriphClockCmd(TIMER_SECOND_2KHZ_RCC, ENABLE)
+#define TIMER_SECOND_2KHZ_IRQn                   	  TIM1_TRG_COM_TIM11_IRQn
+#define TIMER_SECOND_2KHZ_IRQHANDLER                  TIM1_TRG_COM_TIM11_IRQHandler
+#define TIMER_SECOND_2KHZ                             TIM11
+
+//#define TIMER_THIRD_4KHZ_RCC                    	  RCC_APB2Periph_TIM9
+//#define TIMER_THIRD_4KHZ_RCC_CONFIG                   RCC_APB2PeriphClockCmd(TIMER_THIRD_4KHZ_RCC, ENABLE)
+//#define TIMER_THIRD_4KHZ_IRQn                   	  TIM1_BRK_TIM9_IRQn
+//#define TIMER_THIRD_4KHZ_IRQHANDLER                   TIM1_BRK_TIM9_IRQHandler
+//#define TIMER_THIRD_4KHZ                              TIM9
+
+#define TIMER_MEA_4KHZ_RCC                    	      RCC_APB2Periph_TIM8
+#define TIMER_MEA_4KHZ_RCC_CONFIG                     RCC_APB2PeriphClockCmd(TIMER_MEA_4KHZ_RCC, ENABLE)
+#define TIMER_MEA_4KHZ_IRQn                   	      TIM8_CC_IRQn
+#define TIMER_MEA_4KHZ_IRQHANDLER                     TIM8_CC_IRQHandler
+#define TIMER_MEA_4KHZ                                TIM8
+
+// 定时器
+#define FIRST_TIMER_PERIOD                  (1000-1)    // 重载计数 1us -load -10 pre- 9
+#define FIRST_TIMER_PRESCALER               (45-1)     // 预分频 180M
+#define FIRST_OFF_PERIOD                    (1000-1)     // 重载计数
+
+#define SECOND_TIMER_PERIOD                  (2800-1)    // 重载计数
+#define SECOND_TIMER_PRESCALER               (9-1)     // 预分频 180M
+#define SECOND_OFF_PERIOD                    (2200-1)     // 重载计数
+
+#define THIRD_TIMER_PERIOD                  (1800-1)    // 重载计数
+#define THIRD_TIMER_PRESCALER               (9-1)     // 预分频 180M
+#define THIRD_OFF_PERIOD                    (3200-1)     // 重载计数
+
+#define MEA_TIMER_PERIOD                  (2800-1)    // 重载计数
+#define MEA_TIMER_PRESCALER               (9-1)     // 预分频 180M
+#define MEA_OFF_PERIOD                    (2200-1)     // 重载计数
+
+typedef enum
+{
+	TIMER_IDLE,
+	TIMER_ON,
+	TIMER_OFF,
+}TimerState;
+
+static uint16_t s_firstPeriod = FIRST_TIMER_PERIOD;          // 定时器1中断周期
+static uint16_t s_secondPeriod = SECOND_TIMER_PERIOD;        // 定时器2中断周期
+static uint16_t s_thirdPeriod = THIRD_TIMER_PERIOD;        // 定时器3中断周期
+
+static Bool s_isBoxFanUpOpen = FALSE;
+static Bool s_isBoxFanDownOpen = FALSE;
+
+static TimerState s_firstTimerState = TIMER_OFF;
+static TimerState s_secondTimerState = TIMER_OFF;
+static TimerState s_thirdTimerState = TIMER_OFF;
+static uint16_t s_timerCnt2KHz1 = 0;
+static uint16_t s_timerCnt2KHz2 = 0;
+static uint16_t s_timerCnt4KHz = 0;
+/*
+ *
+ *
+void ChannelDriver_PwmIOInit(void)
+{
+	 GPIO_InitTypeDef GPIO_InitStructure;
+	 FIRST_2KHZ_RCC;
+	 SECOND_1_2KHZ_RCC;
+	 SECOND_2_2KHZ_RCC;
+	 THIRD_1_4KHZ_RCC;
+	 THIRD_2_4KHZ_RCC;
+
+	 GPIO_InitStructure.GPIO_Pin=FIRST_2KHZ_PIN;
+	 GPIO_InitStructure.GPIO_Mode=GPIO_Mode_OUT;
+	 GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	 GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+	 GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+	 GPIO_Init(FIRST_2KHZ_PORT,&GPIO_InitStructure);
+//	 FIRST_2KHZ_HIGH();
+
+	 GPIO_InitStructure.GPIO_Pin=SECOND_1_2KHZ_PIN;
+	 GPIO_Init(SECOND_1_2KHZ_PORT,&GPIO_InitStructure);
+//	 SECOND_1_2KHZ_HIGH();
+
+	 GPIO_InitStructure.GPIO_Pin=SECOND_2_2KHZ_PIN;
+	 GPIO_Init(SECOND_2_2KHZ_PORT,&GPIO_InitStructure);
+//	 SECOND_2_2KHZ_HIGH();
+
+	 GPIO_InitStructure.GPIO_Pin=THIRD_1_4KHZ_PIN;
+	 GPIO_Init(THIRD_1_4KHZ_PORT,&GPIO_InitStructure);
+//	 THIRD_1_4KHZ_HIGH();
+
+	 GPIO_InitStructure.GPIO_Pin=THIRD_2_4KHZ_PIN;
+	 GPIO_Init(THIRD_2_4KHZ_PORT,&GPIO_InitStructure);
+//	 THIRD_2_4KHZ_HIGH();
+}
+ * */
+
+void ChannelPWM_Init(void)
+{
+	GPIO_InitTypeDef GPIO_InitStructure;
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOD,ENABLE);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_15;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOD, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOD, GPIO_PinSource15, GPIO_AF_TIM4);
+
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM4, ENABLE);
+
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_Period = 2499;
+	TIM_TimeBaseStructure.TIM_Prescaler = 9-1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM4, &TIM_TimeBaseStructure);
+
+	TIM_OCInitTypeDef TIM_OCInitStructure;
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+
+	TIM_OC4Init(TIM4, &TIM_OCInitStructure);
+	TIM_OC4PreloadConfig(TIM4, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM4, 4, ENABLE);
+	TIM_SetCompare4(TIM4, 1400-1);
+
+//	TIM_Cmd(TIM4, ENABLE);
+	///////4KHz TIM4 C4 end//////////
+
+	///////2k TIM3 C2 start
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_5;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource5, GPIO_AF_TIM3);
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_Period = 4999;
+	TIM_TimeBaseStructure.TIM_Prescaler = 9-1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+
+	TIM_OC2Init(TIM3, &TIM_OCInitStructure);
+	TIM_OC2PreloadConfig(TIM3, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM3, 2, ENABLE);
+	TIM_SetCompare2(TIM3, 2500-1);
+	///////2KHz TIM3 C2 end//////////
+
+	/////2k TIM3-C3 start
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOB,ENABLE);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource0, GPIO_AF_TIM3);
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_Period = 4999;
+	TIM_TimeBaseStructure.TIM_Prescaler = 9-1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+
+	TIM_OC3Init(TIM3, &TIM_OCInitStructure);
+	TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM3, 3, ENABLE);
+	TIM_SetCompare3(TIM3, 2500-1);
+	///////2KHz TIM4 end//////////
+
+	///4k cond
+	RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA,ENABLE);
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_5;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource2, GPIO_AF_TIM2);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource3, GPIO_AF_TIM2);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_TIM2);
+
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
+
+	TIM_TimeBaseStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseStructure.TIM_Period = 2499;
+	TIM_TimeBaseStructure.TIM_Prescaler = 9-1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
+
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_Low;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 0;
+
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
+	TIM_OC3Init(TIM2, &TIM_OCInitStructure);
+	TIM_OC3PreloadConfig(TIM2, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM2, 3, ENABLE);
+	TIM_SetCompare3(TIM2, 900-1);
+
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OC4Init(TIM2, &TIM_OCInitStructure);
+	TIM_OC4PreloadConfig(TIM2, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM2, 4, ENABLE);
+	TIM_SetCompare4(TIM2, 900-1);
+
+	TIM_OC1Init(TIM2, &TIM_OCInitStructure);
+	TIM_OC1PreloadConfig(TIM2, TIM_OCPreload_Enable);
+	TIM_CCxCmd(TIM2, 1, ENABLE);
+	TIM_SetCompare1(TIM2, 1400-1);
+	////4k cond end
+
+	//*Timer Start*//
+	TIM_Cmd(TIM2, ENABLE);
+	TIM_Cmd(TIM4, ENABLE);
+	System_DelayUs(15);
+	TIM_Cmd(TIM3, ENABLE);
+
+}
+
+void ChannelDriver_Init(void)
+{
+    GPIO_InitTypeDef GPIO_InitStructure;
+
+    ADG708_EN_RCC;
+    ADG708_A0_RCC;
+    ADG708_A1_RCC;
+    ADG708_A2_RCC;
+    GAIN1_RCC;
+    GAIN2_RCC;
+    GAIN3_RCC;
+    GAIN4_RCC;
+    MEA_CALIBRATION_RCC;
+//    TIMER_FIRST_2KHZ_RCC_CONFIG;
+//    TIMER_SECOND_2KHZ_RCC_CONFIG;
+//    TIMER_THIRD_4KHZ_RCC_CONFIG;
+//    TIMER_MEA_4KHZ_RCC_CONFIG;
+
+    GPIO_InitStructure.GPIO_Pin=ADG708_EN_PIN;
+    GPIO_InitStructure.GPIO_Mode=GPIO_Mode_OUT;
+    GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+    GPIO_InitStructure.GPIO_Speed=GPIO_Speed_50MHz;
+    GPIO_Init(ADG708_EN_PORT,&GPIO_InitStructure);
+    ADG708_EN_HIGH();
+
+    GPIO_InitStructure.GPIO_Pin=ADG708_A0_PIN;
+	GPIO_Init(ADG708_A0_PORT,&GPIO_InitStructure);
+	ADG708_A0_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=ADG708_A1_PIN;
+	GPIO_Init(ADG708_A1_PORT,&GPIO_InitStructure);
+	ADG708_A1_HIGH();
+
+	GPIO_InitStructure.GPIO_Pin=ADG708_A2_PIN;
+	GPIO_Init(ADG708_A2_PORT,&GPIO_InitStructure);
+	ADG708_A2_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=GAIN1_PIN;
+	GPIO_Init(GAIN1_PORT,&GPIO_InitStructure);
+	GAIN1_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=GAIN2_PIN;
+	GPIO_Init(GAIN2_PORT,&GPIO_InitStructure);
+	GAIN2_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=GAIN3_PIN;
+	GPIO_Init(GAIN3_PORT,&GPIO_InitStructure);
+	GAIN3_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=GAIN4_PIN;
+	GPIO_Init(GAIN4_PORT,&GPIO_InitStructure);
+	GAIN4_LOW();
+
+	GPIO_InitStructure.GPIO_Pin=MEA_CALIBRATION_PIN;
+	GPIO_Init(MEA_CALIBRATION_PORT,&GPIO_InitStructure);
+	MEA_CALIBRATION_HIGH();
+
+//	ChannelDriver_PwmIOInit();
+//
+//	NVIC_InitTypeDef NVIC_InitStructure;
+//
+//	// 变量初始化
+//	memset(&NVIC_InitStructure, 0, sizeof(NVIC_InitStructure));
+//
+//	NVIC_InitStructure.NVIC_IRQChannel                   = TIMER_FIRST_2KHZ_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BOXFAN_UP_IRQ_PRIORITY;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
+//
+//	// 变量初始化
+//    memset(&NVIC_InitStructure, 0, sizeof(NVIC_InitStructure));
+//
+//	NVIC_InitStructure.NVIC_IRQChannel                   = TIMER_SECOND_2KHZ_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BOXFAN_DOWN_IRQ_PRIORITY;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
+//
+//	// 变量初始化
+//	memset(&NVIC_InitStructure, 0, sizeof(NVIC_InitStructure));
+//
+//	NVIC_InitStructure.NVIC_IRQChannel                   = TIMER_THIRD_4KHZ_IRQn;
+//	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BOXFAN_DOWN_IRQ_PRIORITY;
+//	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+//	NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+//	NVIC_Init(&NVIC_InitStructure);
+//
+////	// 变量初始化
+////	memset(&NVIC_InitStructure, 0, sizeof(NVIC_InitStructure));
+////
+////	NVIC_InitStructure.NVIC_IRQChannel                   = TIMER_MEA_4KHZ_IRQn;
+////	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = BOXFAN_DOWN_IRQ_PRIORITY;
+////	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+////	NVIC_InitStructure.NVIC_IRQChannelCmd                = ENABLE;
+////	NVIC_Init(&NVIC_InitStructure);
+//
+//    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+//
+//    // 变量初始化
+//    memset(&TIM_TimeBaseStructure, 0, sizeof(TIM_TimeBaseStructure));
+//
+//    TIM_TimeBaseStructure.TIM_Period        = FIRST_TIMER_PERIOD;
+//    TIM_TimeBaseStructure.TIM_Prescaler     = FIRST_TIMER_PRESCALER;
+//    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+//    TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+//    TIM_TimeBaseInit(TIMER_FIRST_2KHZ, &TIM_TimeBaseStructure);
+//    TIM_ClearFlag(TIMER_FIRST_2KHZ, TIM_IT_Update);
+//    TIM_ITConfig(TIMER_FIRST_2KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+////    TIM_Cmd(TIMER_FIRST_2KHZ, ENABLE);
+//
+//    memset(&TIM_TimeBaseStructure, 0, sizeof(TIM_TimeBaseStructure));
+//
+//	TIM_TimeBaseStructure.TIM_Period        = SECOND_TIMER_PERIOD;
+//	TIM_TimeBaseStructure.TIM_Prescaler     = SECOND_TIMER_PRESCALER;
+//	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+//	TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+//	TIM_TimeBaseInit(TIMER_SECOND_2KHZ, &TIM_TimeBaseStructure);
+//	TIM_ClearFlag(TIMER_SECOND_2KHZ, TIM_IT_Update);
+//	TIM_ITConfig(TIMER_SECOND_2KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+////	TIM_Cmd(TIMER_SECOND_2KHZ, ENABLE);
+//
+//	memset(&TIM_TimeBaseStructure, 0, sizeof(TIM_TimeBaseStructure));
+//
+//	TIM_TimeBaseStructure.TIM_Period        = THIRD_TIMER_PERIOD;
+//	TIM_TimeBaseStructure.TIM_Prescaler     = THIRD_TIMER_PRESCALER;
+//	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+//	TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+//	TIM_TimeBaseInit(TIMER_THIRD_4KHZ, &TIM_TimeBaseStructure);
+//	TIM_ClearFlag(TIMER_THIRD_4KHZ, TIM_IT_Update);
+//	TIM_ITConfig(TIMER_THIRD_4KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+////	TIM_Cmd(TIMER_THIRD_4KHZ, ENABLE);
+//
+////	memset(&TIM_TimeBaseStructure, 0, sizeof(TIM_TimeBaseStructure));
+////
+////	TIM_TimeBaseStructure.TIM_Period        = MEA_TIMER_PERIOD;
+////	TIM_TimeBaseStructure.TIM_Prescaler     = MEA_TIMER_PRESCALER;
+////	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+////	TIM_TimeBaseStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+////	TIM_TimeBaseInit(TIMER_MEA_4KHZ, &TIM_TimeBaseStructure);
+////	TIM_ClearFlag(TIMER_MEA_4KHZ, TIM_IT_Update);
+////	TIM_ITConfig(TIMER_MEA_4KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+////	TIM_Cmd(TIMER_MEA_4KHZ, ENABLE);
+//	TIM_Cmd(TIMER_THIRD_4KHZ, ENABLE);
+////	System_DelayUs(16);
+//	TIM_Cmd(TIMER_FIRST_2KHZ, ENABLE);
+////	System_DelayUs(1);
+//	TIM_Cmd(TIMER_SECOND_2KHZ, ENABLE);
+	ChannelPWM_Init();
+}
+
+
+static void ChannelDriver_SetLevel(uint8_t index, float level)
+{
+	if(level > 0)
+	{
+		if(0 == index)
+		{
+			ADG708_EN_HIGH();
+			s_firstTimerState = TIMER_ON;
+			s_firstPeriod = (uint16_t)(level * FIRST_TIMER_PERIOD);
+//			TIM_ITConfig(TIMER_FIRST_2KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+//			TIM_Cmd(TIMER_FIRST_2KHZ, ENABLE);
+			TRACE_DEBUG("up boxfan %d", s_firstPeriod);
+			s_isBoxFanUpOpen = TRUE;
+		}
+		else if(2 == index)
+		{
+			ADG708_A1_HIGH();
+			TRACE_DEBUG("inside boxfan");
+		}
+		else
+		{
+			ADG708_A0_HIGH();
+			s_secondTimerState = TIMER_ON;
+			s_secondPeriod = (uint16_t)(level * SECOND_TIMER_PERIOD);
+//			TIM_ITConfig(TIMER_SECOND_2KHZ, TIM_IT_Update, ENABLE);  // 使能计数中断
+//			TIM_Cmd(TIMER_SECOND_2KHZ, ENABLE);
+			TRACE_DEBUG("down boxfan %d", s_secondPeriod);
+			s_isBoxFanDownOpen = TRUE;
+		}
+	}
+}
+
+/**
+ * @brief not use
+ * @param
+ */
+static void ChannelDriver_Close(uint8_t index)
+{
+    if(0 == index)
+    {
+    	s_firstPeriod = 0;
+		s_firstTimerState = TIMER_OFF;
+		ADG708_EN_LOW();
+//		TIM_Cmd(TIMER_FIRST_2KHZ, DISABLE);
+		s_isBoxFanUpOpen = FALSE;
+    }
+    else if(2 == index)
+	{
+    	ADG708_A1_LOW();
+	}
+    else
+    {
+    	s_secondPeriod = 0;
+    	s_secondTimerState = TIMER_OFF;
+    	ADG708_A0_LOW();		//预留风扇高电平为关闭
+//		TIM_Cmd(TIMER_SECOND_2KHZ, DISABLE);
+		s_isBoxFanDownOpen = FALSE;
+    }
+
+}
+/**
+ * @brief 设置风扇转速
+ * @param
+ */
+void ChannelDriver_SetOutput(uint8_t index, float level)
+{
+
+    if (level <= 1 && level >= 0)
+    {
+        if(level != 0)
+        {
+        	ChannelDriver_SetLevel(index, level);
+        }
+        else
+        {
+            ChannelDriver_Close(index);
+        }
+        TRACE_DEBUG("\n outsidefan %d level %d %%", index, (uint32_t )(level * 100));
+    }
+    else
+    {
+        TRACE_ERROR("\n OutSideFan level error!");
+    }
+}
+
+Bool ChannelDriver_IsOpen(Uint8 index)
+{
+	if(index == 0)
+	{
+		return s_isBoxFanUpOpen;
+	}
+	else
+	{
+		return s_isBoxFanDownOpen;
+	}
+}
+
+void ChannelDriver_SetSwitchMap(uint8_t map)
+{
+	TRACE_INFO("\n A0 %d, A1 %d, A2 %d , EN %d", (map & 0x01), (map & 0x02), (map & 0x04), (map & 0x08));
+	if(map & 0x01)
+	{
+		ADG708_A0_HIGH();
+	}
+	else
+	{
+		ADG708_A0_LOW();
+	}
+
+	if(map & 0x02)
+	{
+		ADG708_A1_HIGH();
+	}
+	else
+	{
+		ADG708_A1_LOW();
+	}
+
+	if(map & 0x04)
+	{
+		ADG708_A2_HIGH();
+	}
+	else
+	{
+		ADG708_A1_LOW();
+	}
+
+	if(map & 0x08)
+	{
+		ADG708_EN_HIGH();
+	}
+	else
+	{
+		ADG708_EN_LOW();
+	}
+}
+
+void ChannelDriver_SetGainMap(uint8_t gainMap)
+{
+	TRACE_INFO("\n GAIN1 %d, GAIN2 %d, GAIN3 %d, GAIN4 %d ", (gainMap & 0x01), (gainMap & 0x02), (gainMap & 0x04),(gainMap & 0x08));
+	if(gainMap & 0x01)
+	{
+		GAIN1_HIGH();
+	}
+	else
+	{
+		GAIN1_LOW();
+	}
+
+	if(gainMap & 0x02)
+	{
+		GAIN2_HIGH();
+	}
+	else
+	{
+		GAIN2_LOW();
+	}
+
+	if(gainMap & 0x04)
+	{
+		GAIN3_HIGH();
+	}
+	else
+	{
+		GAIN3_LOW();
+	}
+
+	if(gainMap & 0x08)
+	{
+		GAIN4_HIGH();
+	}
+	else
+	{
+		GAIN4_LOW();
+	}
+}
+
+void TIMER_FIRST_2KHZ_IRQHANDLER(void)
+{
+    if(TIM_GetITStatus(TIMER_FIRST_2KHZ, TIM_IT_Update) != RESET)
+    {
+    	uint16_t cnt = 0;
+		switch(s_firstTimerState)
+		{
+		case TIMER_ON:
+			FIRST_2KHZ_LOW();
+			SECOND_1_2KHZ_HIGH();
+			SECOND_2_2KHZ_HIGH();
+			s_firstTimerState = TIMER_OFF;
+			cnt = FIRST_TIMER_PERIOD;
+			break;
+		case TIMER_OFF:
+			FIRST_2KHZ_HIGH();
+			SECOND_1_2KHZ_LOW();
+			SECOND_2_2KHZ_LOW();
+			cnt = FIRST_TIMER_PERIOD;
+			s_firstTimerState = TIMER_ON;
+			break;
+		}
+		// 装载计数值
+		TIM_SetCounter(TIMER_FIRST_2KHZ, 0);
+		TIM_SetAutoreload(TIMER_FIRST_2KHZ, cnt);
+    }
+    TIM_ClearITPendingBit(TIMER_FIRST_2KHZ, TIM_IT_Update);
+}
+
+void TIMER_SECOND_2KHZ_IRQHANDLER(void)
+{
+    if(TIM_GetITStatus(TIMER_SECOND_2KHZ, TIM_IT_Update) != RESET)
+    {
+//        uint16_t cnt = 0;
+//        switch(s_secondTimerState)
+//		{
+//		case TIMER_ON:
+//			SECOND_1_2KHZ_LOW();
+//			SECOND_2_2KHZ_LOW();
+//			s_secondTimerState = TIMER_OFF;
+//			cnt = SECOND_OFF_PERIOD;
+//			break;
+//		case TIMER_OFF:
+//			SECOND_1_2KHZ_HIGH();
+//			SECOND_2_2KHZ_HIGH();
+//			cnt = s_secondPeriod;
+//			s_secondTimerState = TIMER_ON;
+//			break;
+//		}
+    	uint16_t cnt = 0;
+		switch(s_secondTimerState)
+		{
+		case TIMER_ON:
+			MEA_CALIBRATION_HIGH();
+			s_secondTimerState = TIMER_OFF;
+			cnt = MEA_OFF_PERIOD;
+			break;
+		case TIMER_OFF:
+			MEA_CALIBRATION_LOW()
+			cnt = MEA_TIMER_PERIOD;
+			s_secondTimerState = TIMER_ON;
+			break;
+		}
+		// 装载计数值
+		TIM_SetCounter(TIMER_SECOND_2KHZ, 0);
+		TIM_SetAutoreload(TIMER_SECOND_2KHZ, cnt);
+    }
+    TIM_ClearITPendingBit(TIMER_SECOND_2KHZ, TIM_IT_Update);
+}
+
+//void TIMER_THIRD_4KHZ_IRQHANDLER(void)
+//{
+//    if(TIM_GetITStatus(TIMER_THIRD_4KHZ, TIM_IT_Update) != RESET)
+//    {
+//        uint16_t cnt = 0;
+//        switch(s_thirdTimerState)
+//		{
+//		case TIMER_ON:
+//			THIRD_1_4KHZ_LOW();
+//			THIRD_2_4KHZ_LOW();
+//			ADG708_EN_HIGH();
+//			s_thirdTimerState = TIMER_OFF;
+//			cnt = THIRD_OFF_PERIOD;
+//			break;
+//		case TIMER_OFF:
+//			THIRD_1_4KHZ_HIGH();
+//			THIRD_2_4KHZ_HIGH();
+//			ADG708_EN_LOW();
+//			cnt = s_thirdPeriod;
+//			s_thirdTimerState = TIMER_ON;
+//			break;
+//		}
+//		// 装载计数值
+//		TIM_SetCounter(TIMER_THIRD_4KHZ, 0);
+//		TIM_SetAutoreload(TIMER_THIRD_4KHZ, cnt);
+//    }
+//    TIM_ClearITPendingBit(TIMER_THIRD_4KHZ, TIM_IT_Update);
+//}
+
+void TIMER_MEA_4KHZ_IRQHANDLER(void)
+{
+    if(TIM_GetITStatus(TIMER_MEA_4KHZ, TIM_IT_Update) != RESET)
+    {
+        uint16_t cnt = 0;
+        switch(s_secondTimerState)
+		{
+		case TIMER_ON:
+//			MEA_CALIBRATION_LOW()
+			s_secondTimerState = TIMER_OFF;
+			cnt = MEA_OFF_PERIOD;
+			break;
+		case TIMER_OFF:
+//			MEA_CALIBRATION_HIGH();
+			cnt = MEA_TIMER_PERIOD;
+			s_secondTimerState = TIMER_ON;
+			break;
+		}
+		// 装载计数值
+		TIM_SetCounter(TIMER_MEA_4KHZ, 0);
+		TIM_SetAutoreload(TIMER_MEA_4KHZ, cnt);
+    }
+    TIM_ClearITPendingBit(TIMER_MEA_4KHZ, TIM_IT_Update);
+}
+
+
+
